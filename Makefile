@@ -36,7 +36,7 @@ LFLAGS 			+= -pthread
 C_SRC			+= $(shell find $(TOP)/USER -name '*.$(EXT)')
 
 #自定义源文件添加
-C_SRC			+= $(HARD_DIR)/uart.c $(APP)/ipc_udp.c
+C_SRC			+= $(HARD_DIR)/uart.c $(APP_DIR)/ipc_udp.c
 
 #中间目标文件
 #C_OBJ			+= $(C_SRC:%.$(EXT)=%.o)
