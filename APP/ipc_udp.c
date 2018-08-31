@@ -1,60 +1,63 @@
-/****************************************************************************************
- * 文件名  ：ipc_udp.c
- * 描述    ：udp进程间通信，用于linux上与本地程序进行通信
- * 开发平台：linux
- * 开发工具：gcc-4.8.4/arm-linux-gnueabihf-gcc-4.9.4
- ***************************************************************************************/
+/**
+ * @file ipc_udp.c
+ * @brief UDP进程间通信
+ * @author WatWu
+ * @date 2018-08-31
+ */
+
 #include "ipc_udp.h"
 
 struct sockaddr_in ipc_udp_from;
 int ipc_udp_net_fd  = -1;			//进程间通信的socket
 pthread_t ipc_pthread;				//进程间通信线程
 
+static pthread_t udp_multicast_pthread_fd;
+
 void *ipc_udp_pthread(void* pro)
 {
 	pro = pro;
 
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);    
-	if(fd==-1)    
-	{    
-	    printf("Init ipc_udp sockfd error !\n");
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(fd == -1)
+	{
+		printf("Init ipc_udp sockfd error !\n");
 		exit(1);
-	}  
+	}
 
-	struct sockaddr_in addr;    
-	addr.sin_family = AF_INET;    
-	addr.sin_port = htons(8080);    
-	addr.sin_addr.s_addr = inet_addr("127.0.0.1");  
-	
-	int r;    
-	r = bind(fd,(struct sockaddr*)&addr,sizeof(addr));    
-	if(r==-1)    
-	{    
-	    perror("Bind ipc port error !\n");    
-	    close(fd);    
-	    exit(1);    
+	struct sockaddr_in addr;
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(8080);
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+	int r;
+	r = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+	if(r == -1)
+	{
+		perror("Bind ipc port error !\n");
+		close(fd);
+		exit(1);
 	}
 	printf("Bind ipc address successful!\n");
-				
-	ipc_udp_net_fd = fd;		//记录该句柄
-  
-	fd_set read_fds;
-	struct timeval timeout = {0,0};
-	unsigned char net_buf[1024];
-    
-	socklen_t len;    
-	len = sizeof(ipc_udp_from);  
 
-	while(1)    
-	{    
-	    if (ipc_udp_net_fd != -1)
+	ipc_udp_net_fd = fd;		//记录该句柄
+
+	fd_set read_fds;
+	struct timeval timeout = {0, 0};
+	unsigned char net_buf[1024];
+
+	socklen_t len;
+	len = sizeof(ipc_udp_from);
+
+	while(1)
+	{
+		if(ipc_udp_net_fd != -1)
 		{
 			FD_ZERO(&read_fds);
 			FD_SET(ipc_udp_net_fd, &read_fds);
 			timeout.tv_sec = TIME_OUT_VOLUE;
 
 			int ret = select(ipc_udp_net_fd + 1, &read_fds, NULL, NULL, &timeout);
-			switch ( ret )
+			switch(ret)
 			{
 				case -1:						//错误
 					printf("Network socket select error !\n");
@@ -64,13 +67,13 @@ void *ipc_udp_pthread(void* pro)
 					break;
 				default :						//有可读的数据
 				{
-					if (FD_ISSET(ipc_udp_net_fd, &read_fds)) 
+					if(FD_ISSET(ipc_udp_net_fd, &read_fds))
 					{
-						r = recvfrom(ipc_udp_net_fd,net_buf,sizeof(net_buf)-1,0,(struct sockaddr*)&ipc_udp_from,&len);    
-						if(r>0)    
+						r = recvfrom(ipc_udp_net_fd, net_buf, sizeof(net_buf) - 1, 0, (struct sockaddr*)&ipc_udp_from, &len);
+						if(r > 0)
 						{
 							int i;
-							for(i=0;i<r;i++)
+							for(i = 0; i < r; i++)
 							{
 								putchar(net_buf[i]);
 							}
@@ -81,20 +84,145 @@ void *ipc_udp_pthread(void* pro)
 			}
 		}
 		else
-			usleep(100*1000);					//非阻塞的线程必须要加休眠，否则会占满CPU	
+			usleep(100 * 1000);					//非阻塞的线程必须要加休眠，否则会占满CPU
 	}
 }
 
-void Init_ipc_udp_pthread(void)
+void init_ipc_udp_pthread(void)
 {
 	int ret;
 
 	//创建udp进程间通信线程
-	ret=pthread_create(&ipc_pthread,NULL,ipc_udp_pthread,NULL);
-	if(ret!=0)
+	ret = pthread_create(&ipc_pthread, NULL, ipc_udp_pthread, NULL);
+	if(ret != 0)
 	{
-		printf ("Create ipc_udp_pthread pthread error!\n");
-		exit (1);
+		printf("Create ipc_udp_pthread pthread error!\n");
+		exit(1);
 	}
 	printf("Init ipc_udp_pthread pthread ok !\n");
+}
+
+/**
+ * @brief
+ */
+void *udp_multicast_pthread(void *pro)
+{
+	int udp_fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(udp_fd < 0)
+	{
+		printf("Init upd sockfd error !\n");
+		exit(1);
+	}
+
+	int reuse = 1;
+	if(setsockopt(udp_fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) < 0)
+	{
+		perror("Setting SO_REUSEADDR error");
+		close(udp_fd);
+		exit(1);
+	}
+	else
+		printf("Setting SO_REUSEADDR OK !\n");
+
+	int multicast_type = *((int*)pro);
+
+	if(MULTICAST_SERVER == multicast_type)			//作为udp组播服务器
+	{
+		struct sockaddr_in group_addr;
+		group_addr.sin_family = AF_INET;
+		group_addr.sin_port = htons(49500);
+		group_addr.sin_addr.s_addr = inet_addr("226.1.1.1");
+
+		struct in_addr local_addr;
+		local_addr.s_addr = inet_addr("127.0.0.1");
+		if(setsockopt(udp_fd, IPPROTO_IP, IP_MULTICAST_IF, (char *)&local_addr, sizeof(local_addr)) < 0)
+		{
+			perror("Setting local address error");
+			exit(1);
+		}
+		else
+			printf("Setting the local address OK\n");
+
+		while(1)
+		{
+			if(sendto(udp_fd, "Multicast !", strlen("Multicast !") + 1, 0, (struct sockaddr*)&group_addr, sizeof(group_addr)) < 0)
+			{
+				perror("Send multicast data error !");
+			}
+			else
+			{
+				printf("Send multicast data success !\n");
+			}
+
+			sleep(3);
+		}
+	}
+	else if(MULTICAST_CLIENT == multicast_type)		//作为udp组播客户端
+	{
+		struct sockaddr_in local_addr;
+		local_addr.sin_family = AF_INET;
+		local_addr.sin_port = htons(49500);
+		local_addr.sin_addr.s_addr = INADDR_ANY;
+		if(bind(udp_fd, (struct sockaddr*)&local_addr, sizeof(local_addr)))
+		{
+			perror("Binding datagram socket error");
+			close(udp_fd);
+			exit(1);
+		}
+		else
+			printf("Binding datagram socket OK.\n");
+
+		struct ip_mreq group;
+		group.imr_multiaddr.s_addr = inet_addr("226.1.1.1");
+		group.imr_interface.s_addr = inet_addr("127.0.0.1");
+		if(setsockopt(udp_fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0)
+		{
+			perror("Adding multicast group error");
+			close(udp_fd);
+			exit(1);
+		}
+		else
+			printf("Adding multicast group OK.\n");
+
+		unsigned char net_buf[1024];
+		socklen_t len;
+		len = sizeof(ipc_udp_from);
+
+		while(1)
+		{
+			if(recvfrom(udp_fd, net_buf, sizeof(net_buf) - 1, 0, (struct sockaddr*)&ipc_udp_from, &len) < 0)
+			{
+				perror("Reading datagram message error");
+			}
+			else
+			{
+				printf("The message from multicast server is: %s\n", net_buf);
+			}
+
+			sleep(1);
+		}
+	}
+	else
+	{
+		printf("Multicast type error : %d\n", multicast_type);
+		exit(1);
+	}
+}
+
+/**
+ * @brief 初始化UDP组播线程
+ */
+void init_udp_multicast_pthread(int multicast_type)
+{
+	int ret;
+
+	int type = multicast_type;
+	//创建udp组播线程
+	ret = pthread_create(&udp_multicast_pthread_fd, NULL, udp_multicast_pthread, &type);
+	if(ret != 0)
+	{
+		printf("Create udp_multicast_pthread pthread error!\n");
+		exit(1);
+	}
+	printf("Init udp_multicast_pthread pthread ok !\n");
 }
