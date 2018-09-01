@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 /**
  * @brief 使用特定波特率设置串口描述符

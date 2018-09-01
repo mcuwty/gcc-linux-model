@@ -12,19 +12,19 @@ TOP=.
 EXT				= c
 
 #设置源文件搜索路径
-VPATH			+= $(TOP)/APP:$(TOP)/USER:$(TOP)/HARDWARE
+VPATH			+= $(TOP)/app:$(TOP)/user:$(TOP)/hardware
 
 #设置自定义源文件目录
-APP_DIR			= $(TOP)/APP
-HARD_DIR		= $(TOP)/HARDWARE
+APP_DIR			= $(TOP)/app
+HARD_DIR		= $(TOP)/hardware
 
 #设置中间目标文件目录
-OBJ_DIR			= $(TOP)/OBJ
+OBJ_DIR			= $(TOP)/obj
 
 #设定头文件包含目录
-INC_FLAGS 		+= -I $(TOP)/APP
-INC_FLAGS 		+= -I $(TOP)/USER
-INC_FLAGS 		+= -I $(TOP)/HARDWARE
+INC_FLAGS 		+= -I $(TOP)/app
+INC_FLAGS 		+= -I $(TOP)/user
+INC_FLAGS 		+= -I $(TOP)/hardware
 
 #编译选项
 CFLAGS 			+= -W -Wall -g -O0 -std=gnu11
@@ -33,7 +33,7 @@ CFLAGS 			+= -W -Wall -g -O0 -std=gnu11
 LFLAGS 			+= -pthread
 
 #固定源文件添加
-C_SRC			+= $(shell find $(TOP)/USER -name '*.$(EXT)')
+C_SRC			+= $(shell find $(TOP)/user -name '*.$(EXT)')
 
 #自定义源文件添加
 C_SRC			+= $(HARD_DIR)/uart.c $(APP_DIR)/ipc_udp.c
@@ -53,13 +53,13 @@ all:$(C_OBJ)
 	@$(CC) $(C_OBJ) -o $(TARGET).elf $(LFLAGS)
 
 $(OBJ_DIR)/%.o:%.$(EXT)
-	@mkdir -p OBJ
+	@mkdir -p obj
 	@echo "building $<"
 	@$(CC) -c $(CFLAGS) $(INC_FLAGS) -o $@ $<
 
 -include $(C_DEP)
 $(OBJ_DIR)/%.d:%.$(EXT)
-	@mkdir -p OBJ
+	@mkdir -p obj
 	@echo "making $@"
 	@set -e;rm -f $@;$(CC) -MM $(CFLAGS) $(INC_FLAGS) $< > $@.$$$$;sed 's,\($*\)\.o[ :]*,$(OBJ_DIR)/\1.o $(OBJ_DIR)/\1.d:,g' < $@.$$$$ > $@;rm -f $@.$$$$
 
