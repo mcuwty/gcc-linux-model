@@ -8,8 +8,6 @@
 #ifndef IPC_UDP_H
 #define IPC_UDP_H
 
-#include "main.h"
-
 /**
  * @brief 组播类型定义，服务器或客户端
  */
@@ -26,6 +24,7 @@ void init_ipc_udp_pthread(void);
 
 /**
  * @brief 初始化UDP组播线程
+ * @param multicast_type [组播类型，服务器或客户端]
  */
 void init_udp_multicast_pthread(int multicast_type);
 

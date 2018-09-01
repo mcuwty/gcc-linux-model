@@ -1,16 +1,25 @@
-/****************************************************************************************
- * 文件名  ：uart.c
- * 描述    ：串口配置程序
- * 开发平台：linux
- * 开发工具：gcc-4.8.4/arm-linux-gnueabihf-gcc-4.9.4
- ***************************************************************************************/
-#include "uart.h"
-#include <sys/file.h>
+/**
+ * @file uart.c
+ * @brief 串口配置
+ * @author WatWu
+ * @date 2018-09-01
+ */
 
-//配置串口
-int _setup_uart(int fd,int baud)
+#include <sys/file.h>
+#include <string.h>
+#include <stdio.h>
+#include <termios.h>
+#include <unistd.h>
+
+/**
+ * @brief 使用特定波特率设置串口描述符
+ * @param fd 	[打开的串口文件描述符]
+ * @param baud 	[波特率]
+ * @return int 	[设置结果，0为成功]
+ */
+static int setup_uart_fd(int fd, int baud)
 {
-	if(!isatty(fd))	
+	if(!isatty(fd))
 	{
 		fprintf(stderr, "\nERROR: file descriptor %d is NOT a serial port\n", fd);
 		return -1;
@@ -25,18 +34,18 @@ int _setup_uart(int fd,int baud)
 	}
 
 	config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL |
-						INLCR | PARMRK | INPCK | ISTRIP | IXON);
+	                    INLCR | PARMRK | INPCK | ISTRIP | IXON);
 
 	config.c_oflag &= ~(OCRNL | ONLCR | ONLRET |
-						 ONOCR | OFILL | OPOST);
+	                    ONOCR | OFILL | OPOST);
 
-	#ifdef OLCUC
-		config.c_oflag &= ~OLCUC;
-	#endif
+#ifdef OLCUC
+	config.c_oflag &= ~OLCUC;
+#endif
 
-	#ifdef ONOEOT
-		config.c_oflag &= ~ONOEOT;
-	#endif
+#ifdef ONOEOT
+	config.c_oflag &= ~ONOEOT;
+#endif
 
 	config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
 
@@ -46,10 +55,10 @@ int _setup_uart(int fd,int baud)
 	config.c_cc[VMIN]  = 1;
 	config.c_cc[VTIME] = 10;
 
-	switch (baud)
+	switch(baud)
 	{
 		case 1200:
-			if (cfsetispeed(&config, B1200) < 0 || cfsetospeed(&config, B1200) < 0)			
+			if(cfsetispeed(&config, B1200) < 0 || cfsetospeed(&config, B1200) < 0)
 			{
 				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
 				return -1;
@@ -68,35 +77,35 @@ int _setup_uart(int fd,int baud)
 			cfsetospeed(&config, B19200);
 			break;
 		case 38400:
-			if (cfsetispeed(&config, B38400) < 0 || cfsetospeed(&config, B38400) < 0)			
+			if(cfsetispeed(&config, B38400) < 0 || cfsetospeed(&config, B38400) < 0)
 			{
 				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
 				return -1;
 			}
 			break;
 		case 57600:
-			if (cfsetispeed(&config, B57600) < 0 || cfsetospeed(&config, B57600) < 0)			
+			if(cfsetispeed(&config, B57600) < 0 || cfsetospeed(&config, B57600) < 0)
 			{
 				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
 				return -1;
 			}
 			break;
 		case 115200:
-			if (cfsetispeed(&config, B115200) < 0 || cfsetospeed(&config, B115200) < 0)			
+			if(cfsetispeed(&config, B115200) < 0 || cfsetospeed(&config, B115200) < 0)
 			{
 				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
 				return -1;
 			}
 			break;
 		case 460800:
-			if (cfsetispeed(&config, B460800) < 0 || cfsetospeed(&config, B460800) < 0)			
+			if(cfsetispeed(&config, B460800) < 0 || cfsetospeed(&config, B460800) < 0)
 			{
 				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
 				return -1;
 			}
 			break;
 		case 921600:
-			if (cfsetispeed(&config, B921600) < 0 || cfsetospeed(&config, B921600) < 0)			
+			if(cfsetispeed(&config, B921600) < 0 || cfsetospeed(&config, B921600) < 0)
 			{
 				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
 				return -1;
@@ -117,17 +126,22 @@ int _setup_uart(int fd,int baud)
 	return 0;
 }
 
-//初始化串口
-int Init_uart(char* port,int baudrate)
+/**
+ * @brief 初始化串口
+ * @param device_name 	[串口设备名]
+ * @param baudrate 		[波特率]
+ * @return int 			[初始化结果，成功则返回初始化后的串口描述符]
+ */
+int init_uart(char* device_name, int baudrate)
 {
-	int fd = open(port, O_RDWR | O_NOCTTY | O_NDELAY);
+	int fd = open(device_name, O_RDWR | O_NOCTTY | O_NDELAY);
 
-	if (fd == -1)
+	if(fd == -1)
 		return -1;
 	else
-		fcntl(fd, F_SETFL, 0);		//配置为阻塞式
+		fcntl(fd, F_SETFL, 0);			//配置为阻塞式
 
-	if (_setup_uart(fd, baudrate) < 0)
+	if(setup_uart_fd(fd, baudrate) < 0)
 		return -1;
 
 	return fd;

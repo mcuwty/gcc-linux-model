@@ -70,9 +70,6 @@ clean:
 
 rebuild: clean all
 
-test:
-	@echo "Test !"
-
 ctags:
 	@ctags -R *
 	@echo "making tags file"
