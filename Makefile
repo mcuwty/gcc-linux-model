@@ -1,9 +1,9 @@
 #工程名称
-TARGET 			= linux-model
+TARGET			= linux-model
 
 #设置编译器
-#CC    			= arm-linux-gnueabihf-gcc
-CC     			= gcc
+#CC				= arm-linux-gnueabihf-gcc
+CC				= gcc
 
 #获取当前工作目录
 TOP=.
@@ -13,10 +13,6 @@ EXT				= c
 
 #设置源文件搜索路径
 VPATH			+= $(TOP)/app:$(TOP)/user:$(TOP)/hardware
-
-#设置自定义源文件目录
-APP_DIR			= $(TOP)/app
-HARD_DIR		= $(TOP)/hardware
 
 #设置中间目标文件目录
 OBJ_DIR			= $(TOP)/obj
@@ -34,9 +30,10 @@ LFLAGS 			+= -pthread
 
 #固定源文件添加
 C_SRC			+= $(shell find $(TOP)/user -name '*.$(EXT)')
+C_SRC			+= $(shell find $(TOP)/app -name '*.$(EXT)')
 
 #自定义源文件添加
-C_SRC			+= $(HARD_DIR)/uart.c $(APP_DIR)/ipc_udp.c
+C_SRC			+= $(TOP)/hardware/uart.c
 
 #中间目标文件
 #C_OBJ			+= $(C_SRC:%.$(EXT)=%.o)
